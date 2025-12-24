@@ -5,6 +5,7 @@ using Mockups.Models.Account;
 using Mockups.Models.Cart;
 using Mockups.Models.Menu;
 using Mockups.Models.Orders;
+using Mockups.Models.OrdersManagement;
 using Mockups.Repositories.Orders;
 using Mockups.Services.Addresses;
 using Mockups.Services.Carts;
@@ -21,7 +22,7 @@ public class OrdersServiceTests
     [Fact]
     public async Task CreateOrder_SavesOrderAndItems_WithBirthdayDiscount()
     {
-        using var context = TestDbFactory.CreateContext();
+        await using var context = TestDbFactory.CreateContext();
         var ordersRepository = new OrdersRepository(context);
 
         var cartsService = new Mock<ICartsService>();

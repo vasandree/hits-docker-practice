@@ -28,7 +28,7 @@ public class CartsServiceTests
             Id = Guid.NewGuid(),
             Name = "Latte",
             Price = 4.5f,
-            Category = MenuItemCategory.Drinks,
+            Category = MenuItemCategory.Drink,
             Description = "Test",
             IsVegan = true,
             PhotoPath = "latte.png",

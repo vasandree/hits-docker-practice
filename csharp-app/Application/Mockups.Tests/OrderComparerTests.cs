@@ -22,8 +22,8 @@ public class OrderComparerTests
     public void Compare_UsesDeliveryTimeWhenStatusSame()
     {
         var comparer = new OrderComparer();
-        var earlyOrder = new Order { Status = OrderStatus.Processing, DeliveryTime = DateTime.Now.AddHours(1), Address = "A" };
-        var lateOrder = new Order { Status = OrderStatus.Processing, DeliveryTime = DateTime.Now.AddHours(2), Address = "B" };
+        var earlyOrder = new Order { Status = OrderStatus.InProcess, DeliveryTime = DateTime.Now.AddHours(1), Address = "A" };
+        var lateOrder = new Order { Status = OrderStatus.InProcess, DeliveryTime = DateTime.Now.AddHours(2), Address = "B" };
 
         var result = comparer.Compare(earlyOrder, lateOrder);
 
