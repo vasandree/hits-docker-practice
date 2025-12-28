@@ -38,7 +38,7 @@
    dotnet run
    ```
 4. Открыть в браузере:
-   - `https://localhost:5001` или `http://localhost:5000` (в зависимости от настроек SDK).
+   - `https://localhost:7146`.
 
 > Примечание: `ApplicationDbContext` вызывает `Database.EnsureCreated()` — БД и таблицы создаются автоматически при старте.
 

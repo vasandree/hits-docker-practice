@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Mockups.Storage
 {
@@ -20,9 +21,39 @@ namespace Mockups.Storage
         public DbSet<MenuItem> MenuItems { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderMenuItem> OrderMenuItems { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            // Npgsql для PostgreSQL timestamptz (timestamp with time zone) требует UTC DateTime.
+            // В проекте DateTime часто появляется как Unspecified/Local (new DateTime(...), model binding, DateTime.Now).
+            // Нормализуем ВСЕ DateTime/DateTime? в модели в UTC при записи, и помечаем UTC при чтении.
+            var utcDateTimeConverter = new ValueConverter<DateTime, DateTime>(
+                v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime(),
+                v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+            var nullableUtcDateTimeConverter = new ValueConverter<DateTime?, DateTime?>(
+                v => v.HasValue
+                    ? (v.Value.Kind == DateTimeKind.Utc ? v.Value : v.Value.ToUniversalTime())
+                    : v,
+                v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
+            foreach (var entityType in builder.Model.GetEntityTypes())
+            {
+                foreach (var property in entityType.GetProperties())
+                {
+                    if (property.ClrType == typeof(DateTime))
+                    {
+                        property.SetValueConverter(utcDateTimeConverter);
+                    }
+                    else if (property.ClrType == typeof(DateTime?))
+                    {
+                        property.SetValueConverter(nullableUtcDateTimeConverter);
+                    }
+                }
+            }
+
             builder.Entity<User>(o =>
             {
                 o.ToTable("Users");
@@ -64,7 +95,7 @@ namespace Mockups.Storage
                     q.OrderId,
                     q.ItemId
                 });
-                
+
             });
         }
     }
