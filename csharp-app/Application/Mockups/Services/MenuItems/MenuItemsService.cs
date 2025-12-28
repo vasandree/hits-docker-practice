@@ -11,7 +11,7 @@ namespace Mockups.Services.MenuItems
         private readonly IWebHostEnvironment _environment;
         private readonly MenuItemRepository _menuItemRepository;
         private readonly ICartsService _cartsService;
-        
+
         private static string[] AllowedExtensions { get; set; } = { "jpg", "jpeg", "png" };
 
         public MenuItemsService(IWebHostEnvironment environment, MenuItemRepository menuItemRepository, ICartsService cartsService)

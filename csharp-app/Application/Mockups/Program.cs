@@ -24,7 +24,7 @@ builder.Services.AddRazorPages().AddRazorRuntimeCompilation();
 #region Configs
 OrderConfig OrderConfig = new OrderConfig();
 CartsCleanerConfig CartsCleanerConfig = new CartsCleanerConfig();
-builder.Configuration.Bind("OrderTimeParams", OrderConfig);;
+builder.Configuration.Bind("OrderTimeParams", OrderConfig);
 builder.Configuration.Bind("CartsCleaner", CartsCleanerConfig);
 #endregion
 

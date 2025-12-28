@@ -62,7 +62,7 @@ namespace Mockups.Controllers
         {
             await _ordersService.EditOrder(model.PostModel);
 
-            return RedirectToAction("Details", new {id = model.PostModel.orderId });
+            return RedirectToAction("Details", new { id = model.PostModel.orderId });
         }
     }
 }
