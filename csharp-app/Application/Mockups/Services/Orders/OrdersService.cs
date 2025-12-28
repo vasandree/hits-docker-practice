@@ -7,6 +7,7 @@ using Mockups.Configs;
 using Mockups.Services.MenuItems;
 using Mockups.Models.OrdersManagement;
 using Mockups.Models.Cart;
+using Mockups.Storage;
 
 namespace Mockups.Services.Orders
 {
@@ -250,7 +251,7 @@ namespace Mockups.Services.Orders
             return (discount, discountDescription);
         }
 
-        private static List<string> BuildAddressStrings(IEnumerable<Models.Addresses.Address> addresses)
+        private static List<string> BuildAddressStrings(IEnumerable<Address> addresses)
         {
             var addressStrings = new List<string>();
             var addressSet = new HashSet<string>();
