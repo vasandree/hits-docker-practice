@@ -43,7 +43,26 @@
 > Примечание: `ApplicationDbContext` вызывает `Database.EnsureCreated()` — БД и таблицы создаются автоматически при старте.
 
 ### Docker
-Docker‑файлы отсутствуют. Для запуска в контейнере требуется добавить `Dockerfile` и конфигурацию БД вручную.
+#### Сборка и запуск контейнера
+Из директории `csharp-app/Application`:
+
+```bash
+docker build -f Mockups/Dockerfile -t mockups:local .
+docker run --rm -p 8080:8080 \
+  -e ASPNETCORE_ENVIRONMENT=Development \
+  -e ConnectionStrings__DefaultConnection="Host=localhost;Database=mockupsdb;Username=postgres;Password=postgres" \
+  -e AdminCreds__Email="admin@example.com" \
+  -e AdminCreds__Password="ChangeMe123!" \
+  mockups:local
+```
+
+#### Локальный запуск через Docker Compose (app + PostgreSQL)
+```bash
+cd csharp-app/Application
+docker compose up --build
+```
+
+Приложение будет доступно на `http://localhost:8080`.
 
 ### Переменные окружения
 Все параметры можно переопределить через стандартную схему ASP.NET Core:
@@ -191,3 +210,44 @@ dotnet test Mockups.sln
 ```bash
 dotnet test csharp-app/Application/Mockups.Tests/Mockups.Tests.csproj
 ```
+
+## 6) CI/CD (GitHub Actions)
+
+### Что делает пайплайн
+- **build**: `dotnet restore` + `dotnet build`.
+- **test**: `dotnet test` + coverage (`XPlat Code Coverage`).
+- **lint**: `dotnet format --verify-no-changes`.
+- **docker-build**: сборка Docker image.
+- **deploy**: пуш Docker image в GHCR из `main/master` после успешных тестов.
+
+### Секреты/переменные CI
+Для публикации в GHCR используется `GITHUB_TOKEN` (встроенный секрет GitHub).
+
+Для деплоя на сервер (pull из GHCR) нужны:
+- `GHCR_USERNAME` — логин GitHub.
+- `GHCR_TOKEN` — Personal Access Token с правами `read:packages`.
+
+### Локальная проверка шагов CI
+Из директории `csharp-app/Application`:
+```bash
+dotnet restore Mockups.sln
+dotnet build Mockups.sln --configuration Release
+dotnet test Mockups.sln --configuration Release --collect:"XPlat Code Coverage"
+dotnet tool install -g dotnet-format
+dotnet format Mockups.sln --verify-no-changes
+```
+
+### Деплой через GHCR (пример)
+1. Залогиниться в GHCR:
+   ```bash
+   echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+   ```
+2. Запустить контейнер:
+   ```bash
+   docker pull ghcr.io/<owner>/<repo>/mockups:latest
+   docker run --rm -p 8080:8080 \
+     -e ConnectionStrings__DefaultConnection="Host=<db-host>;Database=mockupsdb;Username=postgres;Password=postgres" \
+     -e AdminCreds__Email="admin@example.com" \
+     -e AdminCreds__Password="ChangeMe123!" \
+     ghcr.io/<owner>/<repo>/mockups:latest
+   ```
