@@ -105,6 +105,64 @@ export ASPNETCORE_ENVIRONMENT=Development
 - `GET /OrdersManagement/Edit?id={orderId}` — редактирование заказа.
 - `POST /OrdersManagement/Edit` — сохранение изменений.
 
+### AnalyticsController (JSON)
+Метрики собираются с момента старта приложения (in-memory) и основаны на реальных данных БД.
+
+- `GET /analytics/summary` — сводная статистика по БД: пользователи, позиции меню, заказы, заказы за 7 дней, средний чек.
+- `GET /analytics/usage` — топ эндпоинтов и среднее время обработки запроса.
+- `GET /analytics/errors` — статистика по ошибкам (4xx/5xx).
+
+**Пример запроса (summary):**
+```http
+GET /analytics/summary
+```
+
+**Пример ответа (summary):**
+```json
+{
+  "totalUsers": 12,
+  "totalMenuItems": 25,
+  "totalOrders": 57,
+  "ordersLast7Days": 8,
+  "averageOrderCost": 18.4
+}
+```
+
+**Пример запроса (usage):**
+```http
+GET /analytics/usage
+```
+
+**Пример ответа (usage):**
+```json
+{
+  "startedAtUtc": "2024-06-20T09:15:31Z",
+  "totalRequests": 124,
+  "topEndpoints": [
+    { "path": "/Menu", "count": 54, "averageDurationMs": 18.2 },
+    { "path": "/Orders", "count": 20, "averageDurationMs": 42.7 }
+  ]
+}
+```
+
+**Пример запроса (errors):**
+```http
+GET /analytics/errors
+```
+
+**Пример ответа (errors):**
+```json
+{
+  "totalErrors": 3,
+  "total4xx": 2,
+  "total5xx": 1,
+  "statusCodeCounts": [
+    { "statusCode": 404, "count": 2 },
+    { "statusCode": 500, "count": 1 }
+  ]
+}
+```
+
 **Пример запроса (меню с фильтрацией):**
 ```http
 GET /Menu?filterIsVegan=true&filterCategory=Drinks&filterCategory=Snacks
