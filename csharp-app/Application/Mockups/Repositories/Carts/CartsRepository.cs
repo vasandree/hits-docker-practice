@@ -8,7 +8,7 @@ namespace Mockups.Repositories.Carts
 
         public Cart GetUsersCart(Guid userId)
         {
-            lock(_carts)
+            lock (_carts)
             {
                 var cart = _carts.FirstOrDefault(c => c.UserId == userId);
                 if (cart == null)
@@ -39,7 +39,7 @@ namespace Mockups.Repositories.Carts
 
         public void ClearCarts(List<Cart> carts)
         {
-            lock(_carts)
+            lock (_carts)
             {
                 foreach (var cart in carts)
                 {
@@ -50,7 +50,7 @@ namespace Mockups.Repositories.Carts
 
         public List<Cart> GetInactiveCarts(int inactiveTime)//в минутах
         {
-            lock(_carts)
+            lock (_carts)
             {
                 return _carts.Where(x => (DateTime.Now - x.LastUpdated).TotalMinutes >= inactiveTime).ToList();
             }

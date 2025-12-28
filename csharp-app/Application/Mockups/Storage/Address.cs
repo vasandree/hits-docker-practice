@@ -17,8 +17,8 @@
         {
             string str = $"ул. {StreetName}, д. {HouseNumber}";
             if (!string.IsNullOrEmpty(EntranceNumber))
-                str += $", подъезд { EntranceNumber}";
-            str += $", кв. { FlatNumber}";
+                str += $", подъезд {EntranceNumber}";
+            str += $", кв. {FlatNumber}";
             return str;
         }
     }
