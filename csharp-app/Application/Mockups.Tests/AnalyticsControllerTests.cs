@@ -39,7 +39,7 @@ public class AnalyticsControllerTests
             Id = Guid.NewGuid(),
             Name = "Hidden",
             Price = 1.0f,
-            Category = MenuItemCategory.Snack,
+            Category = MenuItemCategory.Pizza,
             Description = "Test",
             IsVegan = false,
             PhotoPath = "hidden.png",
@@ -52,7 +52,7 @@ public class AnalyticsControllerTests
             Cost = 12.5f,
             Discount = 0,
             Address = "Main",
-            Status = OrderStatus.Created,
+            Status = OrderStatus.New,
             UserId = user.Id
         });
         await context.SaveChangesAsync();
