@@ -207,7 +207,6 @@ namespace Mockups.Controllers
         [Authorize]
         public async Task<IActionResult> Edit()
         {
-            
             var userId = Guid.Parse(User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.NameIdentifier).Value);
             var model = await _usersService.GetEditUserDataViewModel(userId);
             return View(model);
