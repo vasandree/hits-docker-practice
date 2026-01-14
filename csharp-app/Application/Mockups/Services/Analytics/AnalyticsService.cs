@@ -19,22 +19,20 @@ namespace Mockups.Services.Analytics
             var now = DateTime.UtcNow;
             var lastWeek = now.AddDays(-7);
 
-            var totalUsersTask = _context.Users.LongCountAsync(cancellationToken);
-            var totalMenuItemsTask = _context.MenuItems.LongCountAsync(item => !item.IsDeleted, cancellationToken);
-            var totalOrdersTask = _context.Orders.LongCountAsync(cancellationToken);
-            var ordersLast7DaysTask = _context.Orders.LongCountAsync(order => order.CreationTime >= lastWeek, cancellationToken);
-            var averageOrderCostTask = _context.Orders
+            var totalUsers = await _context.Users.LongCountAsync(cancellationToken);
+            var totalMenuItems = await _context.MenuItems.LongCountAsync(item => !item.IsDeleted, cancellationToken);
+            var totalOrders = await _context.Orders.LongCountAsync(cancellationToken);
+            var ordersLast7Days = await _context.Orders.LongCountAsync(order => order.CreationTime >= lastWeek, cancellationToken);
+            var averageOrderCost = await _context.Orders
                 .Select(order => (double?)order.Cost)
                 .AverageAsync(cancellationToken);
 
-            await Task.WhenAll(totalUsersTask, totalMenuItemsTask, totalOrdersTask, ordersLast7DaysTask, averageOrderCostTask);
-
             return new AnalyticsSummaryResponse(
-                totalUsersTask.Result,
-                totalMenuItemsTask.Result,
-                totalOrdersTask.Result,
-                ordersLast7DaysTask.Result,
-                averageOrderCostTask.Result ?? 0);
+                totalUsers,
+                totalMenuItems,
+                totalOrders,
+                ordersLast7Days,
+                averageOrderCost ?? 0);
         }
 
         public AnalyticsUsageResponse GetUsage()
