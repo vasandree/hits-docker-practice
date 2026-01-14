@@ -20,6 +20,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages().AddRazorRuntimeCompilation();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 #region Configs
 OrderConfig OrderConfig = new OrderConfig();
@@ -84,6 +86,9 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+
+app.UseSwagger();
+app.UseSwaggerUI();
 
 #region Middlewares
 app.UseHttpsRedirection();
