@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import random
+import ssl
 import statistics
 import threading
 import time
@@ -60,14 +61,14 @@ def percentile(values: List[float], percent: float) -> float:
 
 def worker(base_url: str, stop_at: float, timeout: float, scenarios: List[EndpointScenario],
            results: List[float], status_counts: Dict[int, int], error_counts: Dict[str, int],
-           lock: threading.Lock) -> None:
+           lock: threading.Lock, ssl_context: ssl.SSLContext | None) -> None:
     while time.monotonic() < stop_at:
         scenario = weighted_choice(scenarios)
         url = f"{base_url}{scenario.path}"
         req = request.Request(url, method=scenario.method)
         start = time.perf_counter()
         try:
-            with request.urlopen(req, timeout=timeout) as response:
+            with request.urlopen(req, timeout=timeout, context=ssl_context) as response:
                 response.read()
                 duration_ms = (time.perf_counter() - start) * 1000
                 with lock:
@@ -84,7 +85,13 @@ def worker(base_url: str, stop_at: float, timeout: float, scenarios: List[Endpoi
                 error_counts[error_key] = error_counts.get(error_key, 0) + 1
 
 
-def run_load_test(base_url: str, duration_s: int, concurrency: int, timeout: float) -> Tuple[Dict[str, float], Dict[int, int], Dict[str, int]]:
+def run_load_test(
+    base_url: str,
+    duration_s: int,
+    concurrency: int,
+    timeout: float,
+    ssl_context: ssl.SSLContext | None,
+) -> Tuple[Dict[str, float], Dict[int, int], Dict[str, int]]:
     scenarios = build_scenario()
     stop_at = time.monotonic() + duration_s
     results: List[float] = []
@@ -94,7 +101,18 @@ def run_load_test(base_url: str, duration_s: int, concurrency: int, timeout: flo
 
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         for _ in range(concurrency):
-            executor.submit(worker, base_url, stop_at, timeout, scenarios, results, status_counts, error_counts, lock)
+            executor.submit(
+                worker,
+                base_url,
+                stop_at,
+                timeout,
+                scenarios,
+                results,
+                status_counts,
+                error_counts,
+                lock,
+                ssl_context,
+            )
 
     total_requests = sum(status_counts.values()) + sum(error_counts.values())
     success_requests = sum(count for code, count in status_counts.items() if 200 <= code < 400)
@@ -150,17 +168,27 @@ def main() -> None:
     parser.add_argument("--concurrency", type=int, default=20, help="Number of parallel workers")
     parser.add_argument("--timeout", type=float, default=5.0, help="Request timeout in seconds")
     parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable TLS certificate verification (useful for local HTTPS testing)",
+    )
+    parser.add_argument(
         "--output-dir",
         default=os.path.join(os.path.dirname(__file__), "results"),
         help="Directory for saving load test results",
     )
     args = parser.parse_args()
 
+    ssl_context = None
+    if args.insecure:
+        ssl_context = ssl._create_unverified_context()
+
     metrics, status_counts, error_counts = run_load_test(
         args.base_url,
         args.duration,
         args.concurrency,
         args.timeout,
+        ssl_context,
     )
 
     print("Load test summary")

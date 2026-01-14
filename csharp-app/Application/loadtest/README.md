@@ -23,6 +23,7 @@ python3 load_test.py --base-url http://localhost:8080 --duration 60 --concurrenc
 ```
 
 You can override the output directory with `--output-dir` if needed.
+If you target local HTTPS endpoints with a self-signed certificate, add `--insecure` to disable TLS verification.
 
 The script reports:
 - **RPS** (requests per second)
