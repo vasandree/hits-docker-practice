@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import argparse
+import json
+import os
 import random
 import statistics
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Dict, List, Tuple
 from urllib import error, request
 
@@ -114,12 +117,43 @@ def run_load_test(base_url: str, duration_s: int, concurrency: int, timeout: flo
     return metrics, status_counts, error_counts
 
 
+def save_results(
+    output_dir: str,
+    metrics: Dict[str, float],
+    status_counts: Dict[int, int],
+    error_counts: Dict[str, int],
+    args: argparse.Namespace,
+) -> str:
+    os.makedirs(output_dir, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    filename = f"load_test_{timestamp}.json"
+    payload = {
+        "timestamp_utc": timestamp,
+        "base_url": args.base_url,
+        "duration_s": args.duration,
+        "concurrency": args.concurrency,
+        "timeout_s": args.timeout,
+        "metrics": metrics,
+        "status_counts": {str(code): count for code, count in status_counts.items()},
+        "error_counts": error_counts,
+    }
+    output_path = os.path.join(output_dir, filename)
+    with open(output_path, "w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2, sort_keys=True)
+    return output_path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Simple load test runner for Mockups app.")
     parser.add_argument("--base-url", default="http://localhost:8080", help="Base URL of the app")
     parser.add_argument("--duration", type=int, default=30, help="Test duration in seconds")
     parser.add_argument("--concurrency", type=int, default=20, help="Number of parallel workers")
     parser.add_argument("--timeout", type=float, default=5.0, help="Request timeout in seconds")
+    parser.add_argument(
+        "--output-dir",
+        default=os.path.join(os.path.dirname(__file__), "results"),
+        help="Directory for saving load test results",
+    )
     args = parser.parse_args()
 
     metrics, status_counts, error_counts = run_load_test(
@@ -143,6 +177,9 @@ def main() -> None:
         print("\nErrors:")
         for error_key, count in sorted(error_counts.items()):
             print(f"  {error_key}: {count}")
+
+    output_path = save_results(args.output_dir, metrics, status_counts, error_counts, args)
+    print(f"\nSaved results to {output_path}")
 
 
 if __name__ == "__main__":
