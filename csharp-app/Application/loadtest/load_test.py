@@ -58,9 +58,17 @@ def percentile(values: List[float], percent: float) -> float:
     return d0 + d1
 
 
-def worker(base_url: str, stop_at: float, timeout: float, scenarios: List[EndpointScenario],
-           results: List[float], status_counts: Dict[int, int], error_counts: Dict[str, int],
-           lock: threading.Lock) -> None:
+def worker(
+    base_url: str,
+    stop_at: float,
+    timeout: float,
+    scenarios: List[EndpointScenario],
+    results: List[float],
+    status_counts: Dict[int, int],
+    error_counts: Dict[str, int],
+    error_details: Dict[str, int],
+    lock: threading.Lock,
+) -> None:
     while time.monotonic() < stop_at:
         scenario = weighted_choice(scenarios)
         url = f"{base_url}{scenario.path}"
@@ -79,22 +87,49 @@ def worker(base_url: str, stop_at: float, timeout: float, scenarios: List[Endpoi
                 results.append(duration_ms)
                 status_counts[exc.code] = status_counts.get(exc.code, 0) + 1
         except Exception as exc:  # pragma: no cover - runtime telemetry
+            duration_ms = (time.perf_counter() - start) * 1000
             with lock:
+                results.append(duration_ms)
                 error_key = exc.__class__.__name__
                 error_counts[error_key] = error_counts.get(error_key, 0) + 1
+                reason = getattr(exc, "reason", None)
+                if isinstance(reason, Exception):
+                    detail = f"{error_key}: {reason.__class__.__name__}: {reason}"
+                elif reason:
+                    detail = f"{error_key}: {reason}"
+                else:
+                    detail = f"{error_key}: {exc}"
+                error_details[detail] = error_details.get(detail, 0) + 1
 
 
-def run_load_test(base_url: str, duration_s: int, concurrency: int, timeout: float) -> Tuple[Dict[str, float], Dict[int, int], Dict[str, int]]:
+def run_load_test(
+    base_url: str,
+    duration_s: int,
+    concurrency: int,
+    timeout: float,
+) -> Tuple[Dict[str, float], Dict[int, int], Dict[str, int], Dict[str, int]]:
     scenarios = build_scenario()
     stop_at = time.monotonic() + duration_s
     results: List[float] = []
     status_counts: Dict[int, int] = {}
     error_counts: Dict[str, int] = {}
     lock = threading.Lock()
+    error_details: Dict[str, int] = {}
 
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         for _ in range(concurrency):
-            executor.submit(worker, base_url, stop_at, timeout, scenarios, results, status_counts, error_counts, lock)
+            executor.submit(
+                worker,
+                base_url,
+                stop_at,
+                timeout,
+                scenarios,
+                results,
+                status_counts,
+                error_counts,
+                error_details,
+                lock,
+            )
 
     total_requests = sum(status_counts.values()) + sum(error_counts.values())
     success_requests = sum(count for code, count in status_counts.items() if 200 <= code < 400)
@@ -114,7 +149,7 @@ def run_load_test(base_url: str, duration_s: int, concurrency: int, timeout: flo
         "latency_p99_ms": percentile(results, 99),
         "latency_max_ms": max(results) if results else 0.0,
     }
-    return metrics, status_counts, error_counts
+    return metrics, status_counts, error_counts, error_details
 
 
 def save_results(
@@ -122,6 +157,7 @@ def save_results(
     metrics: Dict[str, float],
     status_counts: Dict[int, int],
     error_counts: Dict[str, int],
+    error_details: Dict[str, int],
     args: argparse.Namespace,
 ) -> str:
     os.makedirs(output_dir, exist_ok=True)
@@ -136,6 +172,7 @@ def save_results(
         "metrics": metrics,
         "status_counts": {str(code): count for code, count in status_counts.items()},
         "error_counts": error_counts,
+        "error_details": error_details,
     }
     output_path = os.path.join(output_dir, filename)
     with open(output_path, "w", encoding="utf-8") as file:
@@ -156,7 +193,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    metrics, status_counts, error_counts = run_load_test(
+    metrics, status_counts, error_counts, error_details = run_load_test(
         args.base_url,
         args.duration,
         args.concurrency,
@@ -177,8 +214,19 @@ def main() -> None:
         print("\nErrors:")
         for error_key, count in sorted(error_counts.items()):
             print(f"  {error_key}: {count}")
+    if error_details:
+        print("\nError details:")
+        for detail, count in sorted(error_details.items()):
+            print(f"  {detail}: {count}")
 
-    output_path = save_results(args.output_dir, metrics, status_counts, error_counts, args)
+    output_path = save_results(
+        args.output_dir,
+        metrics,
+        status_counts,
+        error_counts,
+        error_details,
+        args,
+    )
     print(f"\nSaved results to {output_path}")
 
 
