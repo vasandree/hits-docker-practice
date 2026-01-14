@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using Mockups.Services.Analytics;
 
 namespace Mockups.Middleware
@@ -8,12 +9,18 @@ namespace Mockups.Middleware
         private readonly RequestDelegate _next;
         private readonly IAnalyticsCollector _collector;
         private readonly ILogger<AnalyticsMiddleware> _logger;
+        private readonly IWebHostEnvironment _environment;
 
-        public AnalyticsMiddleware(RequestDelegate next, IAnalyticsCollector collector, ILogger<AnalyticsMiddleware> logger)
+        public AnalyticsMiddleware(
+            RequestDelegate next,
+            IAnalyticsCollector collector,
+            ILogger<AnalyticsMiddleware> logger,
+            IWebHostEnvironment environment)
         {
             _next = next;
             _collector = collector;
             _logger = logger;
+            _environment = environment;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -30,7 +37,28 @@ namespace Mockups.Middleware
             {
                 statusCode = StatusCodes.Status500InternalServerError;
                 _logger.LogError(ex, "Unhandled exception while processing {Method} {Path}", context.Request.Method, context.Request.Path);
-                throw;
+
+                if (!context.Response.HasStarted)
+                {
+                    var detail = _environment.IsDevelopment() ? ex.ToString() : "An unexpected error occurred.";
+                    var problemDetails = new ProblemDetails
+                    {
+                        Title = "Unhandled exception",
+                        Status = StatusCodes.Status500InternalServerError,
+                        Detail = detail,
+                        Instance = context.Request.Path
+                    };
+
+                    problemDetails.Extensions["traceId"] = context.TraceIdentifier;
+
+                    context.Response.Clear();
+                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    await context.Response.WriteAsJsonAsync(problemDetails);
+                }
+                else
+                {
+                    throw;
+                }
             }
             finally
             {
