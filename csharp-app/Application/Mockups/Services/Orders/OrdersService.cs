@@ -251,7 +251,7 @@ namespace Mockups.Services.Orders
             return (discount, discountDescription);
         }
 
-        private static List<string> BuildAddressStrings(IEnumerable<Address> addresses)
+        private static List<string> BuildAddressStrings(IEnumerable<Models.Addresses.Address> addresses)
         {
             var addressStrings = new List<string>();
             var addressSet = new HashSet<string>();
