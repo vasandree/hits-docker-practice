@@ -251,11 +251,11 @@ namespace Mockups.Services.Orders
             return (discount, discountDescription);
         }
 
-        private static List<string> BuildAddressStrings(IEnumerable<Models.Addresses.Address> addresses)
+        private static List<string> BuildAddressStrings(IEnumerable<Address> addresses)
         {
             var addressStrings = new List<string>();
             var addressSet = new HashSet<string>();
-            var mainAddress = addresses.First(a => a.IsMainAddress == true).GetAddressString();
+            var mainAddress = addresses.First(a => a.IsMainAddress).GetAddressString();
             addressStrings.Add(mainAddress);
             addressSet.Add(mainAddress);
 
