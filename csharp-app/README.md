@@ -43,7 +43,26 @@
 > Примечание: `ApplicationDbContext` вызывает `Database.EnsureCreated()` — БД и таблицы создаются автоматически при старте.
 
 ### Docker
-Docker‑файлы отсутствуют. Для запуска в контейнере требуется добавить `Dockerfile` и конфигурацию БД вручную.
+#### Сборка и запуск контейнера
+Из директории `csharp-app/Application`:
+
+```bash
+docker build -f Mockups/Dockerfile -t mockups:local .
+docker run --rm -p 8080:8080 \
+  -e ASPNETCORE_ENVIRONMENT=Development \
+  -e ConnectionStrings__DefaultConnection="Host=localhost;Database=mockupsdb;Username=postgres;Password=postgres" \
+  -e AdminCreds__Email="admin@example.com" \
+  -e AdminCreds__Password="ChangeMe123!" \
+  mockups:local
+```
+
+#### Локальный запуск через Docker Compose (app + PostgreSQL)
+```bash
+cd csharp-app/Application
+docker compose up --build
+```
+
+Приложение будет доступно на `http://localhost:8080`.
 
 ### Переменные окружения
 Все параметры можно переопределить через стандартную схему ASP.NET Core:
@@ -105,6 +124,64 @@ export ASPNETCORE_ENVIRONMENT=Development
 - `GET /OrdersManagement/Edit?id={orderId}` — редактирование заказа.
 - `POST /OrdersManagement/Edit` — сохранение изменений.
 
+### AnalyticsController (JSON)
+Метрики собираются с момента старта приложения (in-memory) и основаны на реальных данных БД.
+
+- `GET /analytics/summary` — сводная статистика по БД: пользователи, позиции меню, заказы, заказы за 7 дней, средний чек.
+- `GET /analytics/usage` — топ эндпоинтов и среднее время обработки запроса.
+- `GET /analytics/errors` — статистика по ошибкам (4xx/5xx).
+
+**Пример запроса (summary):**
+```http
+GET /analytics/summary
+```
+
+**Пример ответа (summary):**
+```json
+{
+  "totalUsers": 12,
+  "totalMenuItems": 25,
+  "totalOrders": 57,
+  "ordersLast7Days": 8,
+  "averageOrderCost": 18.4
+}
+```
+
+**Пример запроса (usage):**
+```http
+GET /analytics/usage
+```
+
+**Пример ответа (usage):**
+```json
+{
+  "startedAtUtc": "2024-06-20T09:15:31Z",
+  "totalRequests": 124,
+  "topEndpoints": [
+    { "path": "/Menu", "count": 54, "averageDurationMs": 18.2 },
+    { "path": "/Orders", "count": 20, "averageDurationMs": 42.7 }
+  ]
+}
+```
+
+**Пример запроса (errors):**
+```http
+GET /analytics/errors
+```
+
+**Пример ответа (errors):**
+```json
+{
+  "totalErrors": 3,
+  "total4xx": 2,
+  "total5xx": 1,
+  "statusCodeCounts": [
+    { "statusCode": 404, "count": 2 },
+    { "statusCode": 500, "count": 1 }
+  ]
+}
+```
+
 **Пример запроса (меню с фильтрацией):**
 ```http
 GET /Menu?filterIsVegan=true&filterCategory=Drinks&filterCategory=Snacks
@@ -133,3 +210,44 @@ dotnet test Mockups.sln
 ```bash
 dotnet test csharp-app/Application/Mockups.Tests/Mockups.Tests.csproj
 ```
+
+## 6) CI/CD (GitHub Actions)
+
+### Что делает пайплайн
+- **build**: `dotnet restore` + `dotnet build`.
+- **test**: `dotnet test` + coverage (`XPlat Code Coverage`).
+- **lint**: `dotnet format --verify-no-changes`.
+- **docker-build**: сборка Docker image.
+- **deploy**: пуш Docker image в GHCR из `main/master` после успешных тестов.
+
+### Секреты/переменные CI
+Для публикации в GHCR используется `GITHUB_TOKEN` (встроенный секрет GitHub).
+
+Для деплоя на сервер (pull из GHCR) нужны:
+- `GHCR_USERNAME` — логин GitHub.
+- `GHCR_TOKEN` — Personal Access Token с правами `read:packages`.
+
+### Локальная проверка шагов CI
+Из директории `csharp-app/Application`:
+```bash
+dotnet restore Mockups.sln
+dotnet build Mockups.sln --configuration Release
+dotnet test Mockups.sln --configuration Release --collect:"XPlat Code Coverage"
+dotnet tool install -g dotnet-format
+dotnet format Mockups.sln --verify-no-changes
+```
+
+### Деплой через GHCR (пример)
+1. Залогиниться в GHCR:
+   ```bash
+   echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+   ```
+2. Запустить контейнер:
+   ```bash
+   docker pull ghcr.io/<owner>/<repo>/mockups:latest
+   docker run --rm -p 8080:8080 \
+     -e ConnectionStrings__DefaultConnection="Host=<db-host>;Database=mockupsdb;Username=postgres;Password=postgres" \
+     -e AdminCreds__Email="admin@example.com" \
+     -e AdminCreds__Password="ChangeMe123!" \
+     ghcr.io/<owner>/<repo>/mockups:latest
+   ```

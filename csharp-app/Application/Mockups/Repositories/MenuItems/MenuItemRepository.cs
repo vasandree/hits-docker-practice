@@ -27,7 +27,7 @@ namespace Mockups.Repositories.MenuItems
         {
             return await _context.MenuItems
                 .Where(x => x.IsDeleted == false
-                       && x.IsVegan == isVegan 
+                       && x.IsVegan == isVegan
                        && category.Contains(x.Category))
                 .ToListAsync();
         }

@@ -64,7 +64,7 @@ namespace Mockups.Repositories.Addresses
             return await _context.Addresses.Where(a => a.UserId == userId).AnyAsync();
         }
 
-        public async Task SetFirstAddressAsMainForUser (Guid userId)
+        public async Task SetFirstAddressAsMainForUser(Guid userId)
         {
             (await _context.Addresses.Where(a => a.UserId == userId).FirstAsync()).IsMainAddress = true;
             await _context.SaveChangesAsync();

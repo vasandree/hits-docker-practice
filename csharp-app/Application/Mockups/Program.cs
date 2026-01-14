@@ -13,6 +13,8 @@ using Mockups.Services.MenuItems;
 using Mockups.Repositories.Orders;
 using Mockups.Services.Orders;
 using Mockups.Services.CartsCleanerService;
+using Mockups.Services.Analytics;
+using Mockups.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +24,7 @@ builder.Services.AddRazorPages().AddRazorRuntimeCompilation();
 #region Configs
 OrderConfig OrderConfig = new OrderConfig();
 CartsCleanerConfig CartsCleanerConfig = new CartsCleanerConfig();
-builder.Configuration.Bind("OrderTimeParams", OrderConfig);;
+builder.Configuration.Bind("OrderTimeParams", OrderConfig);
 builder.Configuration.Bind("CartsCleaner", CartsCleanerConfig);
 #endregion
 
@@ -45,11 +47,13 @@ builder.Services.AddScoped<IAddressesService, AddressesService>();
 builder.Services.AddScoped<IMenuItemsService, MenuItemsService>();
 builder.Services.AddScoped<ICartsService, CartsService>();
 builder.Services.AddScoped<IOrdersService, OrdersService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 builder.Services.AddScoped<AddressRepository>();
 builder.Services.AddScoped<MenuItemRepository>();
 builder.Services.AddScoped<OrdersRepository>();
 builder.Services.AddSingleton<CartsRepository>();
+builder.Services.AddSingleton<IAnalyticsCollector, AnalyticsCollector>();
 
 builder.Services.AddSingleton(OrderConfig);
 builder.Services.AddSingleton(CartsCleanerConfig);
@@ -86,6 +90,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseMiddleware<AnalyticsMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
