@@ -1,7 +1,6 @@
 ﻿using Mockups.Models.Menu;
 using Mockups.Storage;
 using Mockups.Repositories.MenuItems;
-using Mockups.Models.Cart;
 using Mockups.Services.Carts;
 
 namespace Mockups.Services.MenuItems
@@ -11,7 +10,7 @@ namespace Mockups.Services.MenuItems
         private readonly IWebHostEnvironment _environment;
         private readonly MenuItemRepository _menuItemRepository;
         private readonly ICartsService _cartsService;
-        
+
         private static readonly string[] AllowedExtensions = { "jpg", "jpeg", "png" };
 
         public MenuItemsService(IWebHostEnvironment environment, MenuItemRepository menuItemRepository, ICartsService cartsService)
