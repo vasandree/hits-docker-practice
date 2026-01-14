@@ -16,11 +16,13 @@ The load test runs for a fixed duration with a configurable number of concurrent
 ## Running the load test
 
 1. Start the application and database.
-2. Run the load test script from this folder:
+2. Run the load test script from this folder (results are saved under `results/`):
 
 ```bash
 python3 load_test.py --base-url http://localhost:8080 --duration 60 --concurrency 30
 ```
+
+You can override the output directory with `--output-dir` if needed.
 
 The script reports:
 - **RPS** (requests per second)
