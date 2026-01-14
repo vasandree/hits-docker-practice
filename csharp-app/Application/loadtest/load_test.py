@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
+import ssl
 from urllib import error, request
 
 
@@ -62,6 +63,7 @@ def worker(
     base_url: str,
     stop_at: float,
     timeout: float,
+    context: ssl.SSLContext | None,
     scenarios: List[EndpointScenario],
     results: List[float],
     status_counts: Dict[int, int],
@@ -75,7 +77,7 @@ def worker(
         req = request.Request(url, method=scenario.method)
         start = time.perf_counter()
         try:
-            with request.urlopen(req, timeout=timeout) as response:
+            with request.urlopen(req, timeout=timeout, context=context) as response:
                 response.read()
                 duration_ms = (time.perf_counter() - start) * 1000
                 with lock:
@@ -107,6 +109,7 @@ def run_load_test(
     duration_s: int,
     concurrency: int,
     timeout: float,
+    insecure: bool,
 ) -> Tuple[Dict[str, float], Dict[int, int], Dict[str, int], Dict[str, int]]:
     scenarios = build_scenario()
     stop_at = time.monotonic() + duration_s
@@ -116,6 +119,8 @@ def run_load_test(
     lock = threading.Lock()
     error_details: Dict[str, int] = {}
 
+    context = ssl._create_unverified_context() if insecure else None
+
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         for _ in range(concurrency):
             executor.submit(
@@ -123,6 +128,7 @@ def run_load_test(
                 base_url,
                 stop_at,
                 timeout,
+                context,
                 scenarios,
                 results,
                 status_counts,
@@ -187,6 +193,11 @@ def main() -> None:
     parser.add_argument("--concurrency", type=int, default=20, help="Number of parallel workers")
     parser.add_argument("--timeout", type=float, default=5.0, help="Request timeout in seconds")
     parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable TLS certificate verification (useful for local dev certificates)",
+    )
+    parser.add_argument(
         "--output-dir",
         default=os.path.join(os.path.dirname(__file__), "results"),
         help="Directory for saving load test results",
@@ -198,6 +209,7 @@ def main() -> None:
         args.duration,
         args.concurrency,
         args.timeout,
+        args.insecure,
     )
 
     print("Load test summary")
