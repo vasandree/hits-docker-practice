@@ -11,8 +11,8 @@ namespace Mockups.Services.MenuItems
         private readonly IWebHostEnvironment _environment;
         private readonly MenuItemRepository _menuItemRepository;
         private readonly ICartsService _cartsService;
-
-        private static string[] AllowedExtensions { get; set; } = { "jpg", "jpeg", "png" };
+        
+        private static readonly string[] AllowedExtensions = { "jpg", "jpeg", "png" };
 
         public MenuItemsService(IWebHostEnvironment environment, MenuItemRepository menuItemRepository, ICartsService cartsService)
         {
@@ -33,14 +33,12 @@ namespace Mockups.Services.MenuItems
             var fileNameWithPath = string.Empty;
             if (isFileAttached)
             {
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                var extension = Path.GetExtension(model.File.FileName).Replace(".", "");
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
+                var extension = Path.GetExtension(model.File!.FileName).Replace(".", "");
                 if (!AllowedExtensions.Contains(extension))
                 {
                     throw new ArgumentException("Attached file's extention is not supported");
                 }
-                fileNameWithPath = $"files/{Guid.NewGuid()}-{model.File.FileName}";
+                fileNameWithPath = BuildPhotoPath(model.File.FileName);
                 using (var fs = new FileStream(Path.Combine(_environment.WebRootPath, fileNameWithPath), FileMode.Create))
                 {
                     await model.File.CopyToAsync(fs);
@@ -63,14 +61,14 @@ namespace Mockups.Services.MenuItems
         public async Task<List<MenuItemViewModel>> GetAllMenuItems(bool? isVegan, MenuItemCategory[]? category)
         {
             var itemVMs = new List<MenuItemViewModel>();
-
             var items = new List<MenuItem>();
 
-            if (isVegan != null && category.Any())
+            var hasCategories = category?.Any() == true;
+            if (isVegan != null && hasCategories)
             {
                 items = await _menuItemRepository.GetAllMenuItems((bool)isVegan, category);
             }
-            else if (category.Any())
+            else if (hasCategories)
             {
                 items = await _menuItemRepository.GetAllMenuItems(category);
             }
@@ -84,16 +82,7 @@ namespace Mockups.Services.MenuItems
             }
             foreach (var item in items)
             {
-                itemVMs.Add(new MenuItemViewModel
-                {
-                    Id = item.Id,
-                    Name = item.Name,
-                    Description = item.Description,
-                    Price = item.Price,
-                    Category = item.Category,
-                    IsVegan = item.IsVegan,
-                    PhotoPath = item.PhotoPath
-                });
+                itemVMs.Add(BuildMenuItemViewModel(item));
             }
 
             return itemVMs;
@@ -126,16 +115,7 @@ namespace Mockups.Services.MenuItems
                 return null;
             }
 
-            return new MenuItemViewModel
-            {
-                Id = item.Id,
-                Name = item.Name,
-                Description = item.Description,
-                Price = item.Price,
-                Category = item.Category,
-                IsVegan = item.IsVegan,
-                PhotoPath = item.PhotoPath
-            };
+            return BuildMenuItemViewModel(item);
         }
 
         public async Task AddItemToCart(Guid userID, string itemId, int amount)
@@ -156,22 +136,32 @@ namespace Mockups.Services.MenuItems
 
             return new AddToCartViewModel
             {
-                Item = new MenuItemViewModel
-                {
-                    Id = item.Id,
-                    Name = item.Name,
-                    Description = item.Description,
-                    Price = item.Price,
-                    Category = item.Category,
-                    IsVegan = item.IsVegan,
-                    PhotoPath = item.PhotoPath
-                },
+                Item = BuildMenuItemViewModel(item),
             };
         }
 
         public async Task<string?> GetItemNameById(Guid itemId)
         {
             return (await _menuItemRepository.GetItemById(itemId))?.Name;
+        }
+
+        private static string BuildPhotoPath(string fileName)
+        {
+            return $"files/{Guid.NewGuid()}-{fileName}";
+        }
+
+        private static MenuItemViewModel BuildMenuItemViewModel(MenuItem item)
+        {
+            return new MenuItemViewModel
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Description = item.Description,
+                Price = item.Price,
+                Category = item.Category,
+                IsVegan = item.IsVegan,
+                PhotoPath = item.PhotoPath
+            };
         }
     }
 }
